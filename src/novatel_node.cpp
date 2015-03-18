@@ -1,23 +1,23 @@
 /*
  * The MIT License (MIT)
  * Copyright (c) 2012 William Woodall <wjwwood@gmail.com>
- * 
- * Permission is hereby granted, free of charge, to any person obtaining a 
- * copy of this software and associated documentation files (the "Software"), 
- * to deal in the Software without restriction, including without limitation 
- * the rights to use, copy, modify, merge, publish, distribute, sublicense, 
- * and/or sell copies of the Software, and to permit persons to whom the 
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
  * Software is furnished to do so, subject to the following conditions:
- * 
- * The above copyright notice and this permission notice shall be included 
+ *
+ * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
- * 
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
 
@@ -31,7 +31,7 @@
 
 #include <ros/ros.h>
 #include <tf/tf.h>
- 
+
 
 #ifdef WIN32
  #ifdef DELETE
@@ -98,7 +98,7 @@ public:
   }
 
 
-  inline double psi2theta(double psi) {return M_PI/2-psi;}  
+  inline double psi2theta(double psi) {return M_PI/2-psi;}
   inline double theta2psi(double theta) {return M_PI/2-theta;}
 
 
@@ -113,23 +113,23 @@ public:
 
     if (pos.position_type == NONE)
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
-    else if ((pos.position_type == WAAS) || 
-             (pos.position_type == OMNISTAR) ||   
-             (pos.position_type == OMNISTAR_HP) || 
-             (pos.position_type == OMNISTAR_XP) || 
+    else if ((pos.position_type == WAAS) ||
+             (pos.position_type == OMNISTAR) ||
+             (pos.position_type == OMNISTAR_HP) ||
+             (pos.position_type == OMNISTAR_XP) ||
              (pos.position_type == CDGPS))
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
-    else if ((pos.position_type == PSRDIFF) || 
-             (pos.position_type == NARROW_FLOAT) ||   
-             (pos.position_type == WIDE_INT) ||     
-             (pos.position_type == WIDE_INT) ||     
-             (pos.position_type == NARROW_INT) ||     
-             (pos.position_type == RTK_DIRECT_INS) ||     
-             (pos.position_type == INS_PSRDIFF) ||    
-             (pos.position_type == INS_RTKFLOAT) ||   
+    else if ((pos.position_type == PSRDIFF) ||
+             (pos.position_type == NARROW_FLOAT) ||
+             (pos.position_type == WIDE_INT) ||
+             (pos.position_type == WIDE_INT) ||
+             (pos.position_type == NARROW_INT) ||
+             (pos.position_type == RTK_DIRECT_INS) ||
+             (pos.position_type == INS_PSRDIFF) ||
+             (pos.position_type == INS_RTKFLOAT) ||
              (pos.position_type == INS_RTKFIXED))
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
-     else 
+     else
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
 
     if (pos.signals_used_mask & 0x30)
@@ -164,8 +164,8 @@ public:
     cur_odom_.pose.covariance[28] = DBL_MAX;
 
     // see if there is a recent velocity message
-    if ((cur_velocity_.header.gps_week==pos.header.gps_week) 
-         && (cur_velocity_.header.gps_millisecs==pos.header.gps_millisecs)) 
+    if ((cur_velocity_.header.gps_week==pos.header.gps_week)
+         && (cur_velocity_.header.gps_millisecs==pos.header.gps_millisecs))
     {
       cur_odom_.twist.twist.linear.x=cur_velocity_.horizontal_speed*cos(cur_velocity_.track_over_ground*degrees_to_radians);
       cur_odom_.twist.twist.linear.y=cur_velocity_.horizontal_speed*sin(cur_velocity_.track_over_ground*degrees_to_radians);
@@ -215,7 +215,7 @@ public:
 
     if (ins_pva.status == INS_SOLUTION_GOOD)
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
-    else 
+    else
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
 
     sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
@@ -244,7 +244,7 @@ public:
       // TODO: add covariance
 
     // see if there is a matching ins covariance message
-    if ((cur_ins_cov_.gps_week==ins_pva.gps_week) 
+    if ((cur_ins_cov_.gps_week==ins_pva.gps_week)
          && (cur_ins_cov_.gps_millisecs==ins_pva.gps_millisecs)) {
 
       cur_odom_.pose.covariance[0] = cur_ins_cov_.position_covariance[0];
@@ -376,7 +376,7 @@ public:
           break;
       }
     }
-        
+
     cur_range_.L1.obs = L1_obs;
     cur_range_.L2.obs = L2_obs;
     // change this to be populated by bestpos
@@ -396,26 +396,26 @@ public:
     cur_psrpos_ = pos;
 
     sensor_msgs::NavSatFix sat_fix;
-    
+
     if (pos.position_type == NONE)
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
-    else if ((pos.position_type == WAAS) || 
-             (pos.position_type == OMNISTAR) ||   
-             (pos.position_type == OMNISTAR_HP) || 
-             (pos.position_type == OMNISTAR_XP) || 
+    else if ((pos.position_type == WAAS) ||
+             (pos.position_type == OMNISTAR) ||
+             (pos.position_type == OMNISTAR_HP) ||
+             (pos.position_type == OMNISTAR_XP) ||
              (pos.position_type == CDGPS))
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
-    else if ((pos.position_type == PSRDIFF) || 
-             (pos.position_type == NARROW_FLOAT) ||   
-             (pos.position_type == WIDE_INT) ||     
-             (pos.position_type == WIDE_INT) ||     
-             (pos.position_type == NARROW_INT) ||     
-             (pos.position_type == RTK_DIRECT_INS) ||     
-             (pos.position_type == INS_PSRDIFF) ||    
-             (pos.position_type == INS_RTKFLOAT) ||   
+    else if ((pos.position_type == PSRDIFF) ||
+             (pos.position_type == NARROW_FLOAT) ||
+             (pos.position_type == WIDE_INT) ||
+             (pos.position_type == WIDE_INT) ||
+             (pos.position_type == NARROW_INT) ||
+             (pos.position_type == RTK_DIRECT_INS) ||
+             (pos.position_type == INS_PSRDIFF) ||
+             (pos.position_type == INS_RTKFLOAT) ||
              (pos.position_type == INS_RTKFIXED))
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
-     else 
+     else
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
 
     if (pos.signals_used_mask & 0x30)
@@ -473,13 +473,13 @@ public:
     if (!this->getParameters())
       return;
 
-    this->odom_publisher_ = nh_.advertise<nav_msgs::Odometry>(odom_topic_,0);
-    this->nav_sat_fix_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>(nav_sat_fix_topic_,0);
+    this->odom_publisher_ = nh_.advertise<nav_msgs::Odometry>("gps_odom",0);
+    this->nav_sat_fix_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>("gps_fix",0);
     // ! FIXME - only advertise ephem/range if going to publish it.
-    this->ephemeris_publisher_ = nh_.advertise<gps_msgs::Ephemeris>(ephemeris_topic_,0);
-    this->dual_band_range_publisher_ = nh_.advertise<gps_msgs::L1L2Range>(dual_band_range_topic_,0);
-    this->psrpos_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>(psrpos_topic_,0);
-    this->ecefpos_publisher_ = nh_.advertise<nav_msgs::Odometry>(ecefpos_topic_,0);
+    this->ephemeris_publisher_ = nh_.advertise<gps_msgs::Ephemeris>("ephemeris",0);
+    this->dual_band_range_publisher_ = nh_.advertise<gps_msgs::L1L2Range>("range",0);
+    this->psrpos_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>("gps_fix_psr",0);
+    this->ecefpos_publisher_ = nh_.advertise<nav_msgs::Odometry>("gps_fix_ecef",0);
 
     //em_.setDataCallback(boost::bind(&EM61Node::HandleEmData, this, _1));
     gps_.Connect(port_,baudrate_);
@@ -504,7 +504,7 @@ public:
       default_logs.precision(2);
       default_logs << "INSPVAB ONTIME " << std::fixed << span_default_logs_period_ << ";";
       default_logs << "INSCOVB ONTIME " << std::fixed << span_default_logs_period_;
-      ROS_INFO_STREAM("default logs: " << default_logs);  
+      ROS_INFO_STREAM("default logs: " << default_logs);
     gps_.ConfigureLogs(default_logs.str());
     }
 
@@ -582,18 +582,6 @@ protected:
 
     name_ = ros::this_node::getName();
 
-    nh_.param("odom_topic", odom_topic_, std::string("/gps_odom"));
-    ROS_INFO_STREAM(name_ << ": Odom Topic: " << odom_topic_);
-
-    nh_.param("nav_sat_fix_topic", nav_sat_fix_topic_, std::string("/gps_fix"));
-    ROS_INFO_STREAM(name_ << ": NavSatFix Topic: " << nav_sat_fix_topic_);
-
-    nh_.param("ephemeris_topic", ephemeris_topic_, std::string("/ephemeris"));
-    ROS_INFO_STREAM(name_ << ": Ephemeris Topic: " << ephemeris_topic_);
-
-    nh_.param("dual_band_range_topic", dual_band_range_topic_, std::string("/range"));
-    ROS_INFO_STREAM(name_ << ": L1L2Range Topic: " << dual_band_range_topic_);
-
     nh_.param("port", port_, std::string("/dev/ttyUSB0"));
     ROS_INFO_STREAM(name_ << ": Port: " << port_);
 
@@ -623,12 +611,6 @@ protected:
     nh_.param("psrpos_default_logs_period", psrpos_default_logs_period_, 0.0);
     ROS_INFO_STREAM(name_ << ": Default Pseudorange Position logs period: " << psrpos_default_logs_period_);
 
-    nh_.param("psrpos_topic", psrpos_topic_, std::string("gps_fix_psr"));
-    ROS_INFO_STREAM(name_ << ": Pseudorange Position Topic: " << psrpos_topic_);
-
-    nh_.param("ecefpos_topic", ecefpos_topic_, std::string("gps_fix_ecef"));
-    ROS_INFO_STREAM(name_ << ": ECEF Position Topic: " << ecefpos_topic_);
-
     return true;
   }
 
@@ -645,14 +627,6 @@ protected:
   ros::Publisher ecefpos_publisher_;
 
   Novatel gps_; //
-
-  // topics - why are we not using remap arguments?
-  std::string odom_topic_;
-  std::string nav_sat_fix_topic_;
-  std::string ephemeris_topic_;
-  std::string dual_band_range_topic_;
-  std::string psrpos_topic_;
-  std::string ecefpos_topic_;
 
   std::string port_;
   std::string log_commands_;
@@ -683,10 +657,10 @@ protected:
 
 int main(int argc, char **argv) {
   ros::init(argc, argv, "novatel_node");
-  
+
   NovatelNode node;
-  
+
   node.run();
-  
+
   return 0;
 }
