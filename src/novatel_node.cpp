@@ -78,6 +78,7 @@ public:
     gps_.setLogDebugCallback(handleDebugMessages);
 
     gps_.set_best_utm_position_callback(boost::bind(&NovatelNode::BestUtmHandler, this, _1, _2));
+    gps_.set_best_position_callback(boost::bind(&NovatelNode::BestPosHandler, this, _1, _2));
     gps_.set_best_velocity_callback(boost::bind(&NovatelNode::BestVelocityHandler, this, _1, _2));
     gps_.set_best_position_ecef_callback(boost::bind(&NovatelNode::BestPositionEcefHandler, this, _1, _2));
     //gps_.set_ins_position_velocity_attitude_short_callback(boost::bind(&NovatelNode::InsPvaHandler, this, _1, _2));
@@ -101,71 +102,98 @@ public:
   inline double psi2theta(double psi) {return M_PI/2-psi;}
   inline double theta2psi(double theta) {return M_PI/2-theta;}
 
-
-  void BestUtmHandler(UtmPosition &pos, double &timestamp) {
-    ROS_DEBUG("Received BestUtm");
-
-    cur_utm_bestpos_ = pos;
+  void BestPosHandler(Position &pos, double &timestamp) {
 
     sensor_msgs::NavSatFix sat_fix;
     sat_fix.header.stamp = ros::Time::now();
     sat_fix.header.frame_id = "/odom";
 
-    if (pos.position_type == NONE)
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
-    else if ((pos.position_type == WAAS) ||
-             (pos.position_type == OMNISTAR) ||
-             (pos.position_type == OMNISTAR_HP) ||
-             (pos.position_type == OMNISTAR_XP) ||
-             (pos.position_type == CDGPS))
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
-    else if ((pos.position_type == PSRDIFF) ||
-             (pos.position_type == NARROW_FLOAT) ||
-             (pos.position_type == WIDE_INT) ||
-             (pos.position_type == WIDE_INT) ||
-             (pos.position_type == NARROW_INT) ||
-             (pos.position_type == RTK_DIRECT_INS) ||
-             (pos.position_type == INS_PSRDIFF) ||
-             (pos.position_type == INS_RTKFLOAT) ||
-             (pos.position_type == INS_RTKFIXED))
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
-     else
-      sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
+    switch(pos.position_type) {
+      case NONE:
+      {
+        sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
+      } break;
+      case WAAS:
+      case OMNISTAR:
+      case OMNISTAR_HP:
+      case OMNISTAR_XP:
+      case CDGPS:
+      {
+        sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_SBAS_FIX;
+      } break;
+      case PSRDIFF:
+      case NARROW_FLOAT:
+      case WIDE_INT:
+      case NARROW_INT:
+      case RTK_DIRECT_INS:
+      case INS_PSRDIFF:
+      case INS_RTKFLOAT:
+      case INS_RTKFIXED:
+      {
+        sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_GBAS_FIX;
+      }
+      break;
+      default:
+      {
+        sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
+      } break;
+    }
 
     if (pos.signals_used_mask & 0x30)
       sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GLONASS;
     else
       sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
 
-    // TODO: convert positon to lat, long, alt to export (this is available from PSRPOS)
+    sat_fix.longitude = pos.longitude;
+    sat_fix.latitude = pos.latitude;
+    sat_fix.altitude = pos.height;
 
-    // TODO: add covariance
-    // covariance is east,north,up in row major form
+    // Components are in ENU, row-major order.
+    sat_fix.position_covariance[0] = pos.longitude_standard_deviation * pos.longitude_standard_deviation;
+    sat_fix.position_covariance[4] = pos.latitude_standard_deviation * pos.latitude_standard_deviation;
+    sat_fix.position_covariance[8] = pos.height_standard_deviation * pos.height_standard_deviation;
 
     sat_fix.position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 
     nav_sat_fix_publisher_.publish(sat_fix);
+  }
+
+  void BestUtmHandler(UtmPosition &pos, double &timestamp) {
+    ROS_DEBUG("Received BestUtm");
+    cur_utm_bestpos_ = pos;
+    publishOdom();
+  }
+
+
+  void BestVelocityHandler(Velocity &vel, double &timestamp) {
+    ROS_DEBUG("Received BestVel");
+    cur_velocity_ = vel;
+  }
+
+  void publishOdom() {
+
+    // Figure out how to make sure position and velocity measurements are concurrent
 
     nav_msgs::Odometry cur_odom_;
-    cur_odom_.header.stamp = sat_fix.header.stamp;
+    cur_odom_.header.stamp = ros::Time::now();
     cur_odom_.header.frame_id = "/odom";
-    cur_odom_.pose.pose.position.x = pos.easting;
-    cur_odom_.pose.pose.position.y = pos.northing;
-    cur_odom_.pose.pose.position.z = pos.height;
+    cur_odom_.pose.pose.position.x = cur_utm_bestpos_.easting;
+    cur_odom_.pose.pose.position.y = cur_utm_bestpos_.northing;
+    cur_odom_.pose.pose.position.z = cur_utm_bestpos_.height;
     // covariance representation given in REP 103
     //http://www.ros.org/reps/rep-0103.html#covariance-representation
     // (x, y, z, rotation about X axis, rotation about Y axis, rotation about Z axis)
     // row major
-    cur_odom_.pose.covariance[0] = pos.easting_standard_deviation * pos.easting_standard_deviation;
-    cur_odom_.pose.covariance[7] = pos.northing_standard_deviation * pos.northing_standard_deviation;
-    cur_odom_.pose.covariance[14] = pos.height_standard_deviation * pos.height_standard_deviation;
+    cur_odom_.pose.covariance[0] = cur_utm_bestpos_.easting_standard_deviation * cur_utm_bestpos_.easting_standard_deviation;
+    cur_odom_.pose.covariance[7] = cur_utm_bestpos_.northing_standard_deviation * cur_utm_bestpos_.northing_standard_deviation;
+    cur_odom_.pose.covariance[14] = cur_utm_bestpos_.height_standard_deviation * cur_utm_bestpos_.height_standard_deviation;
     // have no way of knowing roll and pitch with just GPS
     cur_odom_.pose.covariance[21] = DBL_MAX;
     cur_odom_.pose.covariance[28] = DBL_MAX;
 
     // see if there is a recent velocity message
-    if ((cur_velocity_.header.gps_week==pos.header.gps_week)
-         && (cur_velocity_.header.gps_millisecs==pos.header.gps_millisecs))
+    if ((cur_velocity_.header.gps_week==cur_utm_bestpos_.header.gps_week)
+         && (cur_velocity_.header.gps_millisecs==cur_utm_bestpos_.header.gps_millisecs))
     {
       cur_odom_.twist.twist.linear.x=cur_velocity_.horizontal_speed*cos(cur_velocity_.track_over_ground*degrees_to_radians);
       cur_odom_.twist.twist.linear.y=cur_velocity_.horizontal_speed*sin(cur_velocity_.track_over_ground*degrees_to_radians);
@@ -190,12 +218,6 @@ public:
     }
 
     odom_publisher_.publish(cur_odom_);
-  }
-
-
-  void BestVelocityHandler(Velocity &vel, double &timestamp) {
-    ROS_DEBUG("Received BestVel");
-    cur_velocity_ = vel;
   }
 
 
@@ -491,6 +513,7 @@ public:
       ROS_INFO("Requesting default GPS messages: BESTUTMB, BESTVELB");
       std::stringstream default_logs;
       default_logs.precision(2);
+      default_logs << "BESPOSB ONTIME " << std::fixed << gps_default_logs_period_ << ";";
       default_logs << "BESTUTMB ONTIME " << std::fixed << gps_default_logs_period_ << ";";
       default_logs << "BESTVELB ONTIME " << std::fixed << gps_default_logs_period_;
       gps_.ConfigureLogs(default_logs.str());
