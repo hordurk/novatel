@@ -514,7 +514,7 @@ public:
       std::stringstream default_logs;
       default_logs.precision(2);
       // Receive position 1ms later than velocity to ensure they are received in that order
-      default_logs << "BESPOSB ONTIME " << std::fixed << gps_default_logs_period_ << ";";
+      default_logs << "BESTPOSB ONTIME " << std::fixed << gps_default_logs_period_ << ";";
       default_logs << "BESTUTMB ONTIME " << std::fixed << gps_default_logs_period_ << " " << 0.001 << ";";
       default_logs << "BESTVELB ONTIME " << std::fixed << gps_default_logs_period_;
       gps_.ConfigureLogs(default_logs.str());
