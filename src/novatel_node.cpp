@@ -195,8 +195,8 @@ public:
     if ((cur_velocity_.header.gps_week==cur_utm_bestpos_.header.gps_week)
          && (cur_velocity_.header.gps_millisecs==cur_utm_bestpos_.header.gps_millisecs))
     {
-      cur_odom_.twist.twist.linear.x=cur_velocity_.horizontal_speed*cos(cur_velocity_.track_over_ground*degrees_to_radians);
-      cur_odom_.twist.twist.linear.y=cur_velocity_.horizontal_speed*sin(cur_velocity_.track_over_ground*degrees_to_radians);
+      cur_odom_.twist.twist.linear.x=cur_velocity_.horizontal_speed*sin(cur_velocity_.track_over_ground*degrees_to_radians);
+      cur_odom_.twist.twist.linear.y=cur_velocity_.horizontal_speed*cos(cur_velocity_.track_over_ground*degrees_to_radians);
       cur_odom_.twist.twist.linear.z=cur_velocity_.vertical_speed;
 
       cur_odom_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(
