@@ -109,7 +109,7 @@ if (BUILD_WITH_ROS)
 	# Declare a cpp executable
 	add_executable(novatel_node src/novatel_node.cpp)
   add_dependencies(novatel_node ${catkin_EXPORTED_TARGETS})
-	target_link_libraries(novatel_node novatel ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+	target_link_libraries(novatel_node ${LIB_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 endif (BUILD_WITH_ROS)
 
 
@@ -120,7 +120,8 @@ endif (BUILD_WITH_ROS)
 
 # Mark executables and/or libraries for installation
 if(BUILD_WITH_ROS)
-  install(TARGETS novatel novatel_node
+
+  install(TARGETS ${LIB_NAME} novatel_node
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
