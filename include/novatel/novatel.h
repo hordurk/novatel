@@ -132,6 +132,8 @@ public:
   //! Indicates if a connection to the receiver has been established.
   bool IsConnected() {return is_connected_;}
 
+  void SetReadBufferSize(size_t size);
+
   /*!
 
      * Pings the GPS to determine if it is properly connected
@@ -458,6 +460,7 @@ private:
 	//////////////////////////////////////////////////////
 	// Incoming data buffers
 	//////////////////////////////////////////////////////
+        size_t read_buffer_size_;
 	unsigned char data_buffer_[MAX_NOUT_SIZE];	//!< data currently being buffered to read
 	unsigned char* data_read_;		//!< used only in BufferIncomingData - declared here for speed
 	size_t bytes_remaining_;	//!< bytes remaining to be read in the current message

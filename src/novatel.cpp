@@ -156,6 +156,7 @@ Novatel::Novatel() {
     buffer_index_=0;
     read_timestamp_=0;
     parse_timestamp_=0;
+    read_buffer_size_=100;
     ack_received_=false;
     waiting_for_reset_complete_=false;
     is_connected_ = false;
@@ -163,6 +164,10 @@ Novatel::Novatel() {
 
 Novatel::~Novatel() {
     Disconnect();
+}
+
+void Novatel::SetReadBufferSize(size_t size) {
+  read_buffer_size_ = size;
 }
 
 bool Novatel::Connect(std::string port, int baudrate, bool search) {
@@ -184,7 +189,7 @@ bool Novatel::Connect(std::string port, int baudrate, bool search) {
 			}
 		}
 
-		// if the receiver was found on a different baud rate, 
+		// if the receiver was found on a different baud rate,
 		// change its setting to the selected baud rate and reconnect
 		if (found) {
 			// change baud rate to selected value
@@ -204,7 +209,7 @@ bool Novatel::Connect(std::string port, int baudrate, bool search) {
 			Disconnect();
 			boost::this_thread::sleep(boost::posix_time::milliseconds(100));
 			connected = Connect_(port, baudrate);
-		} 
+		}
 	}
 
 	if (connected) {
@@ -800,7 +805,7 @@ void Novatel::UnlogAll() {
     }
 }
 
-void Novatel::ConfigureInterfaceMode(std::string com_port,  
+void Novatel::ConfigureInterfaceMode(std::string com_port,
   std::string rx_mode, std::string tx_mode) {
 
 	try {
@@ -811,7 +816,7 @@ void Novatel::ConfigureInterfaceMode(std::string com_port,
 		boost::mutex::scoped_lock lock(ack_mutex_);
 		boost::system_time const timeout=boost::get_system_time()+ boost::posix_time::milliseconds(2000);
 		if (ack_condition_.timed_wait(lock,timeout)) {
-			log_info_("Ack received.  Interface mode for port " + 
+			log_info_("Ack received.  Interface mode for port " +
 				com_port + " set to: " + rx_mode + " " + tx_mode);
 		} else {
 			log_error_("No acknowledgement received for interface mode command.");
@@ -1015,7 +1020,7 @@ void Novatel::StopReading() {
 }
 
 void Novatel::ReadSerialPort() {
-	unsigned char buffer[MAX_NOUT_SIZE];
+	unsigned char buffer[read_buffer_size_];
 	size_t len;
 	log_info_("Started read thread.");
 
@@ -1023,7 +1028,8 @@ void Novatel::ReadSerialPort() {
 	while (reading_status_) {
 		try {
 			// read data
-			len = serial_port_->read(buffer, MAX_NOUT_SIZE);
+			len = serial_port_->read(buffer, read_buffer_size_);
+
 		} catch (std::exception &e) {
 	        std::stringstream output;
 	        output << "Error reading from serial port: " << e.what();
@@ -1031,16 +1037,20 @@ void Novatel::ReadSerialPort() {
 	        //return;
     	}
 		// timestamp the read
-		if (time_handler_) 
+		if (time_handler_)
 			read_timestamp_ = time_handler_();
-		else 
+		else
 			read_timestamp_ = 0;
+
+      // std::stringstream output;
+      // output << "READ SERIAL LEN=" << len << " " << read_timestamp_;
+      // log_info_(output.str());
 
 		//std::cout << read_timestamp_ <<  "  bytes: " << len << std::endl;
 		// add data to the buffer to be parsed
 		BufferIncomingData(buffer, len);
 	}
-	
+
 }
 
 void Novatel::ReadFromFile(unsigned char* buffer, unsigned int length)
@@ -1098,6 +1108,8 @@ void Novatel::BufferIncomingData(unsigned char *message, unsigned int length)
 				// final byte of acknowledgement received
 				buffer_index_ = 0;
 				reading_acknowledgement_ = false;
+        // log_info_("ACK MUTEX");
+
 				boost::lock_guard<boost::mutex> lock(ack_mutex_);
 				ack_received_ = true;
 				ack_condition_.notify_all();
@@ -1118,7 +1130,7 @@ void Novatel::BufferIncomingData(unsigned char *message, unsigned int length)
             if((message[ii] == NOVATEL_RESET_BYTE_4) && (message[ii+2] == NOVATEL_RESET_BYTE_6)
                     && reading_reset_complete_ && waiting_for_reset_complete_) {
                 // 4th byte of receiver reset complete message
-//                log_info_("RECEIVER RESET COMPLETE RECEIVED.");
+                // log_info_("RECEIVER RESET COMPLETE RECEIVED.");
                 buffer_index_ = 0;
                 reading_reset_complete_ = false;
                 boost::lock_guard<boost::mutex> lock(reset_mutex_);
@@ -1318,7 +1330,7 @@ void Novatel::ParseBinary(unsigned char *message, size_t length, BINARY_LOG_TYPE
 	        	payload_length = (((uint16_t) *(message + 9)) << 8) +
 	        	                 ((uint16_t) *(message + 8));
 	        	// unsigned long crc_of_received = CalculateBlockCRC32(length-4, message);
-	        	
+
 	        	// std::stringstream asdf;
 	        	// asdf << "------\nheader_length: " << header_length << "\npayload_length: " << payload_length << "\n";
 	        	// asdf << "length idx: " << length << "\nsizeof: " << sizeof(cmp_ranges) << "\n";
@@ -1341,7 +1353,7 @@ void Novatel::ParseBinary(unsigned char *message, size_t length, BINARY_LOG_TYPE
 	        	       message + header_length + payload_length,
 	        	       4);
 
-	        	
+
 
 	        	// asdf << "sizeof after memcpy : " << sizeof(cmp_ranges) << "\n";
 	        	// asdf << "crc after shoving: " ;
@@ -1351,7 +1363,7 @@ void Novatel::ParseBinary(unsigned char *message, size_t length, BINARY_LOG_TYPE
 	        	// log_info_(asdf.str().c_str()); asdf.str("");
 	        	// printHex((char*)message,length);
 
-	        	
+
 	        	//printHex((char*)cmp_ranges.range_data[0],sizeof(24*((int32_t)*(message+header_length))));
 
 	            // memcpy(&cmp_ranges, message, length);
@@ -1764,7 +1776,7 @@ bool Novatel::ConvertLLaUTM(double Lat, double Long, double *northing, double *e
      double LongOriginRad;
 
      double N, T, C, A, M;
-     
+
      //Make sure the longitude is between -180.00 .. 179.9
      *zone = int((LongTemp + 180)/6.0) + 1;
      if (Lat >= 56.0 && Lat < 64.0 && LongTemp >= 3.0 && LongTemp < 12.0)
@@ -1791,7 +1803,7 @@ bool Novatel::ConvertLLaUTM(double Lat, double Long, double *northing, double *e
                 - (3*ee/8     + 3*ee*ee/32 + 45*ee*ee*ee/1024)*sin(2*LatRad)
                 + (15*ee*ee/256 + 45*ee*ee*ee/1024)*sin(4*LatRad)
                 - (35*ee*ee*ee/3072)*sin(6*LatRad));
-     
+
      *easting = (double)(k0*N*(A+(1-T+C)*A*A*A/6
                          + (5-18*T+T*T+72*C-58*e2)*A*A*A*A*A/120) + 500000.0);
      *northing = (double)(k0*(M+N*tan(LatRad)*(A*A/2+(5-T+9*C+4*C*C)*A*A*A*A/24
@@ -1805,5 +1817,3 @@ bool Novatel::ConvertLLaUTM(double Lat, double Long, double *northing, double *e
 
      return true;
 }
-
-
