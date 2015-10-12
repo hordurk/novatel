@@ -48,6 +48,9 @@
 #include <boost/tokenizer.hpp>
 #include <boost/thread/thread.hpp>
 
+#include <diagnostic_updater/diagnostic_updater.h> // Headers for publishing diagnostic messages.
+#include <diagnostic_updater/publisher.h>
+
 #include "novatel/novatel.h"
 using namespace novatel;
 
@@ -70,6 +73,8 @@ static double sigma_v = 0.05; // velocity std dev in m/s
 class NovatelNode {
 public:
   NovatelNode() : nh_("~"){
+
+    diagnostic_updater_.setHardwareID("novatel_gps");
 
     // set up logging handlers
     gps_.setLogInfoCallback(handleInfoMessages);
@@ -104,6 +109,7 @@ public:
 
   void BestPosHandler(Position &pos, double &timestamp) {
 
+    nav_sat_fixed_ = true;
     sensor_msgs::NavSatFix sat_fix;
     sat_fix.header.stamp = ros::Time::now();
     sat_fix.header.frame_id = "/odom";
@@ -112,6 +118,7 @@ public:
       case NONE:
       {
         sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_NO_FIX;
+        nav_sat_fixed_ = false;
       } break;
       case WAAS:
       case OMNISTAR:
@@ -156,6 +163,7 @@ public:
     sat_fix.position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
 
     nav_sat_fix_publisher_.publish(sat_fix);
+    diagnostic_updater_.update();
   }
 
   void BestUtmHandler(UtmPosition &pos, double &timestamp) {
@@ -489,6 +497,15 @@ public:
     // ROS_INFO_STREAM("RAW RANGE MSG\n\tsizeof: " << sizeof(msg));
   }
 
+  void CheckNavSatFix(diagnostic_updater::DiagnosticStatusWrapper &stat) {
+    if (!nav_sat_fixed_) {
+      stat.summary(diagnostic_msgs::DiagnosticStatus::ERROR, "No GPS Fix");
+    } else {
+      stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "GPS Fix Available");
+    }
+    stat.add("NavSatFix", nav_sat_fixed_);
+  }
+
 
   void run() {
 
@@ -497,6 +514,12 @@ public:
 
     this->odom_publisher_ = nh_.advertise<nav_msgs::Odometry>("gps_odom",0);
     this->nav_sat_fix_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>("gps_fix",0);
+    this->nav_sat_fix_pub_check_.reset(new diagnostic_updater::TopicDiagnostic("gps_fix",
+                                        diagnostic_updater_,
+                                        diagnostic_updater::FrequencyStatusParam(&navsat_freq_, &navsat_freq_, 0.1, 10),
+                                        diagnostic_updater::TimeStampStatusParam()));
+    diagnostic_updater::FunctionDiagnosticTask nav_sat_fix_check("nav_sat_fix_check", boost::bind(&NovatelNode::CheckNavSatFix, this, _1));
+    this->nav_sat_fix_pub_check_->addTask(&nav_sat_fix_check);
     // ! FIXME - only advertise ephem/range if going to publish it.
     this->ephemeris_publisher_ = nh_.advertise<gps_msgs::Ephemeris>("ephemeris",0);
     this->dual_band_range_publisher_ = nh_.advertise<gps_msgs::L1L2Range>("range",0);
@@ -635,6 +658,9 @@ protected:
     nh_.param("psrpos_default_logs_period", psrpos_default_logs_period_, 0.0);
     ROS_INFO_STREAM(name_ << ": Default Pseudorange Position logs period: " << psrpos_default_logs_period_);
 
+    nh_.param("navsat_freq_", navsat_freq_, 20.0);
+    ROS_INFO_STREAM(name_ << ": NavSatFreq: " << navsat_freq_);
+
     return true;
   }
 
@@ -645,6 +671,8 @@ protected:
   std::string name_;
   ros::Publisher odom_publisher_;
   ros::Publisher nav_sat_fix_publisher_;
+  diagnostic_updater::Updater diagnostic_updater_;
+  boost::shared_ptr<diagnostic_updater::TopicDiagnostic> nav_sat_fix_pub_check_;
   ros::Publisher ephemeris_publisher_;
   ros::Publisher dual_band_range_publisher_;
   ros::Publisher psrpos_publisher_;
@@ -662,6 +690,9 @@ protected:
   std::string ephem_log_;
   int baudrate_;
   double poll_rate_;
+
+  double navsat_freq_;
+  bool nav_sat_fixed_;
 
   Velocity cur_velocity_;
   // InsCovarianceShort cur_ins_cov_;
