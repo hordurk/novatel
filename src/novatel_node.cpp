@@ -112,7 +112,7 @@ public:
     nav_sat_fixed_ = true;
     sensor_msgs::NavSatFix sat_fix;
     sat_fix.header.stamp = ros::Time::now();
-    sat_fix.header.frame_id = "odom";
+    sat_fix.header.frame_id = fix_frame_id_;
 
     switch(pos.position_type) {
       case NONE:
@@ -184,8 +184,8 @@ public:
 
     nav_msgs::Odometry cur_odom_;
     cur_odom_.header.stamp = ros::Time::now();
-    cur_odom_.header.frame_id = "odom";
-    cur_odom_.child_frame_id = "base_link";
+    cur_odom_.header.frame_id = odom_frame_id_;
+    cur_odom_.child_frame_id = odom_child_frame_id_;
     cur_odom_.pose.pose.position.x = cur_utm_bestpos_.easting;
     cur_odom_.pose.pose.position.y = cur_utm_bestpos_.northing;
     cur_odom_.pose.pose.position.z = cur_utm_bestpos_.height;
@@ -242,7 +242,7 @@ public:
 
     sensor_msgs::NavSatFix sat_fix;
     sat_fix.header.stamp = ros::Time::now();
-    sat_fix.header.frame_id = "/odom";
+    sat_fix.header.frame_id = fix_frame_id_;
 
     if (ins_pva.status == INS_SOLUTION_GOOD)
       sat_fix.status.status = sensor_msgs::NavSatStatus::STATUS_FIX;
@@ -261,8 +261,8 @@ public:
 
     nav_msgs::Odometry cur_odom_;
     cur_odom_.header.stamp = sat_fix.header.stamp;
-    cur_odom_.header.frame_id = "odom";
-    cur_odom_.child_frame_id = "base_link";
+    cur_odom_.header.frame_id = odom_frame_id_;
+    cur_odom_.child_frame_id = odom_child_frame_id_;
     cur_odom_.pose.pose.position.x = easting;
     cur_odom_.pose.pose.position.y = northing;
     cur_odom_.pose.pose.position.z = ins_pva.height;
@@ -456,7 +456,7 @@ public:
       sat_fix.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
 
     sat_fix.header.stamp = ros::Time::now();
-    sat_fix.header.frame_id = "/lla";
+    sat_fix.header.frame_id = lla_frame_id_;
     sat_fix.latitude = pos.latitude;
     sat_fix.longitude = pos.longitude;
     sat_fix.altitude = pos.height;
@@ -474,7 +474,7 @@ public:
     nav_msgs::Odometry ecef_pos;
 
     ecef_pos.header.stamp = ros::Time::now();
-    ecef_pos.header.frame_id = "/ecef";
+    ecef_pos.header.frame_id = ecef_frame_id_;
     ecef_pos.pose.pose.position.x = best_xyz.x_position;
     ecef_pos.pose.pose.position.y = best_xyz.y_position;
     ecef_pos.pose.pose.position.z = best_xyz.z_position;
@@ -658,8 +658,14 @@ protected:
     nh_.param("psrpos_default_logs_period", psrpos_default_logs_period_, 0.0);
     ROS_INFO_STREAM(name_ << ": Default Pseudorange Position logs period: " << psrpos_default_logs_period_);
 
-    nh_.param("navsat_freq_", navsat_freq_, 1/gps_default_logs_period_);
+    nh_.param("navsat_freq", navsat_freq_, 1/gps_default_logs_period_);
     ROS_INFO_STREAM(name_ << ": NavSatFreq: " << navsat_freq_);
+
+    nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
+    nh_.param("odom_child_frame_id", odom_child_frame_id_, std::string("base_link"));
+    nh_.param("fix_frame_id", fix_frame_id_, std::string("gps"));
+    nh_.param("lla_frame_id", lla_frame_id_, std::string("lla"));
+    nh_.param("ecef_frame_id", ecef_frame_id_, std::string("ecef"));
 
     return true;
   }
@@ -688,6 +694,7 @@ protected:
   double range_default_logs_period_;
   double psrpos_default_logs_period_;
   std::string ephem_log_;
+  std::string fix_frame_id_, odom_frame_id_, odom_child_frame_id_, ecef_frame_id_, lla_frame_id_;
   int baudrate_;
   double poll_rate_;
 
