@@ -526,6 +526,9 @@ public:
     this->psrpos_publisher_ = nh_.advertise<sensor_msgs::NavSatFix>("gps_fix_psr",0);
     this->ecefpos_publisher_ = nh_.advertise<nav_msgs::Odometry>("gps_fix_ecef",0);
 
+    diagnostic_updater::FunctionDiagnosticTask fix_check("NavSat fix check", boost::bind(&NovatelNode::CheckNavSatFix, this, _1));
+    this->nav_sat_fix_publisher_->addTask(&fix_check);
+
     //em_.setDataCallback(boost::bind(&EM61Node::HandleEmData, this, _1));
     gps_.Connect(port_,baudrate_);
 
